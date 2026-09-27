@@ -12,7 +12,7 @@ import urllib.parse
 import numpy as np
 import requests
 
-USER_AGENT = "WikiMarketAnalyst/1.0 (GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
+USER_AGENT = "WikiMarketAnalyst/1.0 (Author: Mykola Shuprovych; GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".cache")
 
 def get_date_range(

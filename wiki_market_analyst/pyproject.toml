@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "wiki-market-analyst"
 version = "1.0.0"
 description = "Wikimedia Pageviews Market Intelligence Skill for B2C Product Decision Making"
-authors = [{name = "Genesis AI Product Engineering School"}]
+authors = [{name = "Mykola Shuprovych"}]
 readme = "SKILL.md"
 requires-python = ">=3.10"
 dependencies = [

@@ -1,5 +1,6 @@
 # Wiki Market Analyst 📊
 > **AI Agent Skill for B2C Product Decision Making using Wikimedia Market Intelligence**  
+> Author: **Mykola Shuprovych**  
 > Developed for **AI Product Engineering School (Genesis Academy)**  
 > Conforming to the [Agent Skills Specification](https://agentskills.io/specification).
 
@@ -124,6 +125,8 @@ For each run, the skill produces:
 
 ## 📚 Documentation Links
 - [Skill Specification (`SKILL.md`)](file:///wiki_market_analyst/SKILL.md)
+- [Cross-Environment & Model Testing Guide](file:///docs/CROSS_ENVIRONMENT_AND_MODEL_TESTING.md)
 - [System Architecture & Mathematics](file:///docs/ARCHITECTURE.md)
 - [Verification Report & Fast Model Benchmarks](file:///docs/VERIFICATION_REPORT.md)
 - [Future Scaling Roadmap](file:///docs/FUTURE_ROADMAP.md)
+

@@ -52,7 +52,7 @@ class ExecutiveReportPDF(FPDF):
         self.set_y(-10)
         self.set_font(self.font_family_name, "", 7)
         self.set_text_color(148, 163, 184)
-        self.cell(0, 5, "Wiki Market Analyst · AI Product Engineering School Case · Confidential & Strategic", align="C")
+        self.cell(0, 5, "Wiki Market Analyst · Author: Mykola Shuprovych · Genesis AI School · Confidential & Strategic", align="C")
 
 def generate_pdf_report(
     topic: str,

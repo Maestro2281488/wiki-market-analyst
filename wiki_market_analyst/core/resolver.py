@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any
 import requests
 import urllib.parse
 
-USER_AGENT = "WikiMarketAnalyst/1.0 (GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
+USER_AGENT = "WikiMarketAnalyst/1.0 (Author: Mykola Shuprovych; GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
 
 def resolve_topic(topic: str, target_langs: List[str], hint_lang: str = "en") -> Dict[str, Any]:
     """

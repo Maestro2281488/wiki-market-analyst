@@ -2,7 +2,7 @@
 name: wiki-market-analyst
 description: Analyze Wikimedia pageviews, evaluate audience interest trends across languages, and generate executive 1-page PDF reports for B2C product decisions.
 version: 1.0.0
-author: Genesis AI Product Engineering School
+author: Mykola Shuprovych
 tags: [wikimedia, market-research, b2c, trend-analysis, pageviews, localization, edtech]
 ---
 
