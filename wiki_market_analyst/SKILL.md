@@ -35,7 +35,7 @@ python wiki_market_analyst/main.py --topic "<TOPIC>" --langs "<LANG_CODES>" [--y
 | Flag | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--topic` | string | **Required** | The topic or concept query (e.g. `"Intermittent fasting"`, `"Астрономія"`, `"English language"`). Supports any language. |
-| `--langs` | string | `"en"` | Comma-separated ISO language codes (e.g. `"pl,cs"`, `"uk"`, `"uk,pl,es,de,cs"`). |
+| `--langs` | string | `"en"` | Comma-separated language codes (e.g. `"ua,pl"`, `"uk,cs"`, `"ukr,de"`, `"es"`). Aliases `ua` and `ukr` map automatically to Ukrainian Wikipedia and display as `UA` in reports (avoiding confusion with UK / Great Britain). |
 | `--years` | integer | `2` | Historical observation window in years (default: 2 years). |
 | `--output-dir` | string | `"output"` | Target directory where `chart.png` and `report.pdf` will be saved. |
 | `--no-pdf` | flag | `false` | Skip PDF generation if only quick JSON metrics are needed. |

@@ -96,8 +96,15 @@ def generate_pdf_report(
     pdf.set_font(font_name, "", 7)
     pdf.cell(58, 4, f"Generated: {datetime.date.today().strftime('%Y-%m-%d')}", align="R")
 
+def get_display_code(lang: str) -> str:
+    """Returns business-standard display code (e.g. UA instead of UK to avoid United Kingdom confusion)."""
+    l_low = lang.lower().strip()
+    if l_low in ("uk", "ua", "ukr"):
+        return "UA"
+    return l_low.upper()
+
     pdf.set_xy(135, 20)
-    pdf.cell(58, 4, f"Languages: {', '.join(l.upper() for l in analyses.keys())}", align="R")
+    pdf.cell(58, 4, f"Languages: {', '.join(get_display_code(l) for l in analyses.keys())}", align="R")
 
     # --- 2. EXECUTIVE SUMMARY BULLETS ---
     pdf.set_y(35)
@@ -129,9 +136,9 @@ def generate_pdf_report(
     
     # Bullet 1: Growth & Primary Target
     if best_lang:
-        b1 = f"• Primary Momentum: '{best_lang.upper()}' exhibits the strongest trend (+{best_growth:.1f}% YoY) with {analyses[best_lang]['trust_level']} data confidence."
+        b1 = f"• Primary Momentum: '{get_display_code(best_lang)}' exhibits the strongest trend (+{best_growth:.1f}% YoY) with {analyses[best_lang]['trust_level']} data confidence."
     elif highest_vol_lang:
-        b1 = f"• Demand Volume: '{highest_vol_lang.upper()}' leads total organic traffic ({analyses[highest_vol_lang]['monthly_avg']:,} views/mo), but growth is flat or negative."
+        b1 = f"• Demand Volume: '{get_display_code(highest_vol_lang)}' leads total organic traffic ({analyses[highest_vol_lang]['monthly_avg']:,} views/mo), but growth is flat or negative."
     else:
         b1 = "• Traffic Signals: Low or declining search interest observed across analyzed language segments."
     pdf.cell(0, 4, b1)
@@ -140,7 +147,7 @@ def generate_pdf_report(
     # Bullet 2: Trust & Risk
     low_trust = [l for l, d in analyses.items() if d.get("has_data") and d["trust_score"] < 50]
     if low_trust:
-        b2 = f"• Reliability Caveat: {', '.join(l.upper() for l in low_trust)} shows elevated volatility or single-day spikes. Treat as PR/media hype rather than steady search intent."
+        b2 = f"• Reliability Caveat: {', '.join(get_display_code(l) for l in low_trust)} shows elevated volatility or single-day spikes. Treat as PR/media hype rather than steady search intent."
     else:
         b2 = "• Signal Quality: Observed traffic shows high stability without distortive bot spikes or transient viral hype."
     pdf.cell(0, 4, b2)
@@ -148,9 +155,10 @@ def generate_pdf_report(
 
     # Bullet 3: Content Void / Localization
     if missing_langs:
-        b3 = f"• Opportunity / Gap: {', '.join(l.upper() for l in missing_langs)} lacks dedicated Wikipedia coverage. High potential for brand-led content or indicates lower organic awareness."
+        b3 = f"• Opportunity / Gap: {', '.join(get_display_code(l) for l in missing_langs)} lacks dedicated Wikipedia coverage. High potential for brand-led content or indicates lower organic awareness."
     else:
         b3 = "• Coverage: Dedicated Wikipedia articles exist across all requested locales, confirming active informational baselines."
+
     pdf.cell(0, 4, b3)
     pdf.ln(6)
 
@@ -195,7 +203,7 @@ def generate_pdf_report(
             trust = "0% (NONE)"
             rec = "No Article / Void"
 
-        pdf.cell(col_w[0], 5.5, lang.upper(), border=1, align="C")
+        pdf.cell(col_w[0], 5.5, get_display_code(lang), border=1, align="C")
         pdf.cell(col_w[1], 5.5, title, border=1, align="L")
         pdf.cell(col_w[2], 5.5, m_views, border=1, align="R")
         pdf.cell(col_w[3], 5.5, growth, border=1, align="R")

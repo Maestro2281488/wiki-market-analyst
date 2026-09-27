@@ -29,6 +29,20 @@ from core.analyzer import get_date_range, fetch_pageviews_daily, analyze_traffic
 from core.visualizer import generate_comparison_chart
 from core.reporter import generate_pdf_report
 
+LANG_ALIASES = {
+    "ua": "uk",
+    "ukr": "uk",
+    "cz": "cs",
+    "jp": "ja"
+}
+
+def get_display_code(lang: str) -> str:
+    """Returns business-standard display code (e.g. UA instead of UK to avoid United Kingdom confusion)."""
+    l_low = lang.lower().strip()
+    if l_low in ("uk", "ua", "ukr"):
+        return "UA"
+    return l_low.upper()
+
 def run_pipeline(
     topic: str,
     langs: List[str],
@@ -49,12 +63,13 @@ def run_pipeline(
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # Clean language list
-    target_langs = [l.strip().lower() for l in langs if l.strip()]
+    # Clean and alias language list (e.g. 'ua' or 'ukr' -> 'uk' for Wikimedia API)
+    target_langs = [LANG_ALIASES.get(l.strip().lower(), l.strip().lower()) for l in langs if l.strip()]
     if not target_langs:
         target_langs = ["en"]
         
     start_str, end_str, s_date, e_date = get_date_range(
+
         years=years,
         start_date=start_date,
         end_date=end_date
@@ -125,20 +140,20 @@ def run_pipeline(
         best_d = analyses[best_growth]
         if best_d["growth_rate_pct"] > 0:
             executive_bullets.append(
-                f"Strongest Momentum: {best_growth.upper()} shows {best_d['growth_rate_pct']:+.1f}% YoY growth "
+                f"Strongest Momentum: {get_display_code(best_growth)} shows {best_d['growth_rate_pct']:+.1f}% YoY growth "
                 f"({best_d['monthly_avg']:,} views/mo, Trust: {best_d['trust_score']}%)."
             )
         else:
             executive_bullets.append(
                 f"Declining / Stagnant Trend: All observed locales exhibit negative or flat growth. "
-                f"Top volume in {best_growth.upper()} ({best_d['monthly_avg']:,} views/mo, {best_d['growth_rate_pct']:+.1f}% YoY)."
+                f"Top volume in {get_display_code(best_growth)} ({best_d['monthly_avg']:,} views/mo, {best_d['growth_rate_pct']:+.1f}% YoY)."
             )
             
         # Trust & Anomalies
         risky_langs = [l for l in data_langs if analyses[l]["trust_score"] < 50]
         if risky_langs:
             executive_bullets.append(
-                f"Data Reliability Alert: High volatility or viral spikes detected in {', '.join(l.upper() for l in risky_langs)}. "
+                f"Data Reliability Alert: High volatility or viral spikes detected in {', '.join(get_display_code(l) for l in risky_langs)}. "
                 f"Signals reflect transient media hype rather than stable recurring interest."
             )
         else:
@@ -152,7 +167,7 @@ def run_pipeline(
     missing = [l for l, d in analyses.items() if not d.get("has_data")]
     if missing:
         executive_bullets.append(
-            f"Content Void: {', '.join(l.upper() for l in missing)} has no dedicated Wikipedia page. "
+            f"Content Void: {', '.join(get_display_code(l) for l in missing)} has no dedicated Wikipedia page. "
             f"Represents unaddressed educational demand or low top-of-funnel search awareness."
         )
 
@@ -163,7 +178,9 @@ def run_pipeline(
         c.pop("dates", None)
         c.pop("views", None)
         c.pop("ma_30", None)
+        c["display_code"] = get_display_code(l)
         compact_langs[l] = c
+
 
     # Effective years duration
     days_total = (e_date - s_date).days

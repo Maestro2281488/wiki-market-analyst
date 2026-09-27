@@ -20,6 +20,13 @@ PALETTE = [
     "#EF4444",  # Red
 ]
 
+def get_display_code(lang: str) -> str:
+    """Returns business-standard display code (e.g. UA instead of UK to avoid United Kingdom confusion)."""
+    l_low = lang.lower().strip()
+    if l_low in ("uk", "ua", "ukr"):
+        return "UA"
+    return l_low.upper()
+
 def generate_comparison_chart(
     topic: str,
     analyses: Dict[str, Dict[str, Any]],
@@ -52,7 +59,8 @@ def generate_comparison_chart(
             dates = [datetime.strptime(x, "%Y-%m-%d") for x in d["dates"]]
             ma_30 = d["ma_30"]
             color = PALETTE[idx % len(PALETTE)]
-            label = f"{lang.upper()} ({d.get('title', lang)}): {d['growth_rate_pct']:+.1f}% YoY"
+            label = f"{get_display_code(lang)} ({d.get('title', lang)}): {d['growth_rate_pct']:+.1f}% YoY"
+
             
             # Plot daily points faintly
             ax_trend.plot(dates, d["views"], color=color, alpha=0.15, linewidth=0.8)
@@ -82,7 +90,8 @@ def generate_comparison_chart(
     
     for l in all_langs:
         d = analyses[l]
-        labels.append(l.upper())
+        labels.append(get_display_code(l))
+
         if d.get("has_data"):
             g = d["growth_rate_pct"]
             growth_vals.append(g)

@@ -10,6 +10,13 @@ import urllib.parse
 
 USER_AGENT = "WikiMarketAnalyst/1.0 (Author: Mykola Shuprovych; GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
 
+LANG_ALIASES = {
+    "ua": "uk",
+    "ukr": "uk",
+    "cz": "cs",
+    "jp": "ja"
+}
+
 def resolve_topic(topic: str, target_langs: List[str], hint_lang: str = "en") -> Dict[str, Any]:
     """
     Resolves a search query to Wikipedia article titles across requested languages.
@@ -76,7 +83,9 @@ def resolve_topic(topic: str, target_langs: List[str], hint_lang: str = "en") ->
             resolved["sitelinks_error"] = str(e)
             
     # 2. Map sitelinks to target languages
-    for lang in target_langs:
+    for raw_lang in target_langs:
+
+        lang = LANG_ALIASES.get(raw_lang.lower().strip(), raw_lang.lower().strip())
         wiki_key = f"{lang}wiki"
         if wiki_key in sitelinks:
             title = sitelinks[wiki_key]["title"]
@@ -90,6 +99,7 @@ def resolve_topic(topic: str, target_langs: List[str], hint_lang: str = "en") ->
             # Fallback: search target Wikipedia directly
             fallback_match = search_wiki_fallback(lang, topic, headers)
             resolved["languages"][lang] = fallback_match
+
             
     return resolved
 
