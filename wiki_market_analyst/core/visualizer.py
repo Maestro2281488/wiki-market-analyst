@@ -62,8 +62,13 @@ def generate_comparison_chart(
         ax_trend.set_title(f"Wikimedia Demand Dynamics: '{topic}' (30-day Smoothed Trend)",
                            fontsize=14, fontweight="bold", pad=12, color="#0F172A")
         ax_trend.set_ylabel("Daily Human Views (MA 30)", fontsize=11, color="#334155")
+        
+        # Adaptive date locator to prevent overlapping date labels
+        date_locator = mdates.AutoDateLocator(minticks=5, maxticks=9)
+        ax_trend.xaxis.set_major_locator(date_locator)
         ax_trend.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
-        ax_trend.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+        plt.setp(ax_trend.get_xticklabels(), rotation=25, ha="right", fontsize=9)
+        
         ax_trend.grid(True, linestyle="--", alpha=0.4, color="#CBD5E1")
         ax_trend.legend(frameon=True, facecolor="#F8FAFC", edgecolor="#E2E8F0", fontsize=10, loc="upper left")
         ax_trend.tick_params(colors="#475569")
@@ -83,25 +88,45 @@ def generate_comparison_chart(
             growth_vals.append(g)
             bar_colors.append("#10B981" if g >= 0 else "#EF4444")
         else:
-            growth_vals.append(0)
+            growth_vals.append(0.0)
             bar_colors.append("#94A3B8")
             
-    bars = ax_growth.bar(labels, growth_vals, color=bar_colors, width=0.5, edgecolor="#0F172A", linewidth=0.5)
+    bars = ax_growth.bar(labels, growth_vals, color=bar_colors, width=0.45, edgecolor="#0F172A", linewidth=0.5)
     ax_growth.axhline(0, color="#64748B", linewidth=1.0)
     ax_growth.set_title("Period Growth Rate (% YoY)", fontsize=12, fontweight="bold", color="#0F172A")
     ax_growth.set_ylabel("Growth %", fontsize=10, color="#334155")
     ax_growth.grid(True, axis="y", linestyle="--", alpha=0.4, color="#CBD5E1")
     ax_growth.tick_params(colors="#475569")
     
+    # Calculate adaptive headroom so labels never clip outside the subplot
+    min_g = min(growth_vals) if growth_vals else 0.0
+    max_g = max(growth_vals) if growth_vals else 0.0
+    pad_top = max(abs(max_g) * 0.25, 20.0)
+    pad_bot = max(abs(min_g) * 0.25, 20.0) if min_g < 0 else 5.0
+    ax_growth.set_ylim(min_g - pad_bot, max_g + pad_top)
+    
     for bar in bars:
         h = bar.get_height()
         va = "bottom" if h >= 0 else "top"
-        ax_growth.annotate(f"{h:+.1f}%",
-                           xy=(bar.get_x() + bar.get_width() / 2, h),
-                           xytext=(0, 3 if h >= 0 else -10),
-                           textcoords="offset points",
-                           ha="center", va=va, fontsize=9, fontweight="bold",
-                           color="#0F172A")
+        # Format percentage nicely (handle large numbers like +18k%)
+        if abs(h) >= 10000:
+            pct_text = f"{h/1000:+.1f}k%"
+        elif abs(h) >= 1000:
+            pct_text = f"{h:+,.0f}%"
+        else:
+            pct_text = f"{h:+.1f}%"
+            
+        y_pos = h + (pad_top * 0.05 if h >= 0 else -pad_bot * 0.05)
+        ax_growth.text(
+            bar.get_x() + bar.get_width() / 2,
+            y_pos,
+            pct_text,
+            ha="center",
+            va=va,
+            fontsize=9,
+            fontweight="bold",
+            color="#0F172A"
+        )
 
     # --- Panel 3: Data Reliability / Trust Score ---
     ax_trust = fig.add_subplot(gs[1, 1])
@@ -122,8 +147,9 @@ def generate_comparison_chart(
             trust_scores.append(0)
             trust_colors.append("#CBD5E1")
             
-    bars_t = ax_trust.bar(labels, trust_scores, color=trust_colors, width=0.5, edgecolor="#0F172A", linewidth=0.5)
-    ax_trust.set_ylim(0, 105)
+    bars_t = ax_trust.bar(labels, trust_scores, color=trust_colors, width=0.45, edgecolor="#0F172A", linewidth=0.5)
+    # Headroom up to 125 so 100% text never touches the top border
+    ax_trust.set_ylim(0, 125)
     ax_trust.set_title("Data Trust Score (0-100%)", fontsize=12, fontweight="bold", color="#0F172A")
     ax_trust.set_ylabel("Confidence %", fontsize=10, color="#334155")
     ax_trust.grid(True, axis="y", linestyle="--", alpha=0.4, color="#CBD5E1")
@@ -131,13 +157,18 @@ def generate_comparison_chart(
     
     for bar in bars_t:
         h = bar.get_height()
-        ax_trust.annotate(f"{int(h)}%",
-                          xy=(bar.get_x() + bar.get_width() / 2, h),
-                          xytext=(0, 3),
-                          textcoords="offset points",
-                          ha="center", va="bottom", fontsize=9, fontweight="bold",
-                          color="#0F172A")
+        ax_trust.text(
+            bar.get_x() + bar.get_width() / 2,
+            h + 3,
+            f"{int(h)}%",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
+            color="#0F172A"
+        )
 
     plt.savefig(output_path, bbox_inches="tight", dpi=180)
     plt.close(fig)
     return output_path
+
