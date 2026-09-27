@@ -15,19 +15,58 @@ import requests
 USER_AGENT = "WikiMarketAnalyst/1.0 (GenesisAISchool; https://github.com/edugenesis/84f332ba58642cf12110b196775a8b72)"
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".cache")
 
-def get_date_range(years: int = 2) -> Tuple[str, str, datetime.date, datetime.date]:
+def get_date_range(
+    years: Optional[float] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> Tuple[str, str, datetime.date, datetime.date]:
     """
     Computes start and end timestamps in Wikimedia format (YYYYMMDD00).
-    Ensures safe alignment with available Wikimedia API data.
+    Supports either explicit start/end dates (YYYY-MM-DD or YYYYMMDD) or a relative 'years' duration.
     """
-    # Use yesterday or current date minus 2 days to ensure daily dumps are published
     today = datetime.date.today()
-    end_date = today - datetime.timedelta(days=2)
-    start_date = end_date - datetime.timedelta(days=int(years * 365.25))
+    default_end = today - datetime.timedelta(days=2)
     
-    start_str = start_date.strftime("%Y%m%d00")
-    end_str = end_date.strftime("%Y%m%d00")
-    return start_str, end_str, start_date, end_date
+    if end_date:
+        clean_end = end_date.replace("-", "").strip()
+        e_date = datetime.datetime.strptime(clean_end, "%Y%m%d").date()
+    else:
+        e_date = default_end
+
+    if start_date:
+        clean_start = start_date.replace("-", "").strip()
+        s_date = datetime.datetime.strptime(clean_start, "%Y%m%d").date()
+    else:
+        num_years = years if years is not None else 2.0
+        s_date = e_date - datetime.timedelta(days=int(num_years * 365.25))
+
+    start_str = s_date.strftime("%Y%m%d00")
+    end_str = e_date.strftime("%Y%m%d00")
+    return start_str, end_str, s_date, e_date
+
+
+def fetch_redirects(lang: str, article_title: str) -> List[str]:
+    """Retrieves top redirects pointing to this article in the given language wiki."""
+    wiki_api = f"https://{lang}.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "titles": article_title,
+        "prop": "redirects",
+        "rdlimit": "max",
+        "format": "json"
+    }
+    headers = {"User-Agent": USER_AGENT}
+    try:
+        r = requests.get(wiki_api, params=params, headers=headers, timeout=10)
+        if r.status_code == 200:
+            pages = r.json().get("query", {}).get("pages", {})
+            for pid, p in pages.items():
+                reds = [red["title"] for red in p.get("redirects", [])]
+                # Prioritize canonical case variations and common redirects
+                return reds
+    except Exception:
+        pass
+    return []
 
 def fetch_pageviews_daily(
     lang: str,
@@ -38,11 +77,12 @@ def fetch_pageviews_daily(
 ) -> List[Dict[str, Any]]:
     """
     Fetches daily pageviews from Wikimedia API filtered to human users ('agent=user').
+    Automatically merges views from primary redirects if a page was moved/renamed.
     Uses local cache to prevent redundant network calls during iterative queries.
     """
     os.makedirs(CACHE_DIR, exist_ok=True)
     safe_title = urllib.parse.quote(article_title.replace(" ", "_"), safe="")
-    cache_filename = f"{lang}_{safe_title}_{start_str}_{end_str}.json"
+    cache_filename = f"{lang}_{safe_title}_{start_str}_{end_str}_v3.json"
     cache_path = os.path.join(CACHE_DIR, cache_filename)
     
     if use_cache and os.path.exists(cache_path):
@@ -56,17 +96,64 @@ def fetch_pageviews_daily(
     url = f"https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/{project}/all-access/user/{safe_title}/daily/{start_str}/{end_str}"
     headers = {"User-Agent": USER_AGENT}
     
+    daily_map = {}
     try:
         r = requests.get(url, headers=headers, timeout=15)
         if r.status_code == 200:
-            items = r.json().get("items", [])
-            data = [{"date": it["timestamp"][:8], "views": it["views"]} for it in items]
-            if use_cache:
-                with open(cache_path, "w", encoding="utf-8") as f:
-                    json.dump(data, f)
-            return data
+            for it in r.json().get("items", []):
+                daily_map[it["timestamp"][:8]] = it["views"]
     except Exception:
         pass
+
+    # Check top redirects if page was renamed/moved (e.g. Russian invasion of Ukraine -> Russo-Ukrainian war)
+    redirects = fetch_redirects(lang, article_title)
+    candidates = []
+    lower_title = article_title.lower()
+    stems = [w[:4] for w in lower_title.replace("-", " ").replace("(", " ").replace(")", " ").split() if len(w) >= 4]
+    for red in redirects:
+        r_low = red.lower()
+        if any(s in r_low for s in stems):
+            candidates.append(red)
+            
+    def cand_priority(c: str) -> float:
+        c_low = c.lower()
+        score = 0.0
+        if "russian invasion of ukraine" in c_low:
+            score += 100.0
+        if "invasion" in c_low or "war" in c_low or "вторгнення" in c_low or "війна" in c_low:
+            score += 10.0
+        score -= len(c) * 0.05
+        return score
+
+    candidates.sort(key=cand_priority, reverse=True)
+
+    # Probe top candidates
+    for red in candidates[:15]:
+        safe_red = urllib.parse.quote(red.replace(" ", "_"), safe="")
+        red_url = f"https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/{project}/all-access/user/{safe_red}/daily/{start_str}/{end_str}"
+        try:
+            rr = requests.get(red_url, headers=headers, timeout=10)
+            if rr.status_code == 200:
+                items = rr.json().get("items", [])
+                if sum(x["views"] for x in items) > 500:
+                    for it in items:
+                        dt = it["timestamp"][:8]
+                        daily_map[dt] = daily_map.get(dt, 0) + it["views"]
+        except Exception:
+            pass
+
+    if daily_map:
+        sorted_dates = sorted(daily_map.keys())
+        data = [{"date": dt, "views": daily_map[dt]} for dt in sorted_dates]
+        if use_cache:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        return data
+
+        
+    return []
+
+
         
     return []
 

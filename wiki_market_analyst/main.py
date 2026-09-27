@@ -12,7 +12,8 @@ import argparse
 import json
 import os
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+
 
 # Ensure UTF-8 output on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -31,7 +32,9 @@ from core.reporter import generate_pdf_report
 def run_pipeline(
     topic: str,
     langs: List[str],
-    years: int = 2,
+    years: Optional[float] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     output_dir: str = "output",
     generate_pdf: bool = True,
     generate_chart: bool = True
@@ -51,7 +54,11 @@ def run_pipeline(
     if not target_langs:
         target_langs = ["en"]
         
-    start_str, end_str, start_date, end_date = get_date_range(years=years)
+    start_str, end_str, s_date, e_date = get_date_range(
+        years=years,
+        start_date=start_date,
+        end_date=end_date
+    )
     
     # Step 1: Resolve topic across languages
     resolution = resolve_topic(topic, target_langs)
@@ -95,8 +102,16 @@ def run_pipeline(
         
     # Step 4: Reporter (PDF)
     pdf_path = os.path.join(output_dir, "report.pdf")
+    date_label = f"{s_date.strftime('%Y-%m-%d')} to {e_date.strftime('%Y-%m-%d')}"
     if generate_pdf and chart_path:
-        generate_pdf_report(topic, analyses, chart_path, years=years, output_pdf_path=pdf_path)
+        generate_pdf_report(
+            topic,
+            analyses,
+            chart_path,
+            years=years,
+            date_label=date_label,
+            output_pdf_path=pdf_path
+        )
     else:
         pdf_path = None
 
@@ -150,14 +165,18 @@ def run_pipeline(
         c.pop("ma_30", None)
         compact_langs[l] = c
 
+    # Effective years duration
+    days_total = (e_date - s_date).days
+    effective_years = round(days_total / 365.25, 2)
+
     return {
         "topic": topic,
         "resolved_label": resolution.get("label"),
         "qid": resolution.get("qid"),
-        "time_window_years": years,
+        "time_window_years": effective_years,
         "date_range": {
-            "start": start_date.strftime("%Y-%m-%d"),
-            "end": end_date.strftime("%Y-%m-%d")
+            "start": s_date.strftime("%Y-%m-%d"),
+            "end": e_date.strftime("%Y-%m-%d")
         },
         "executive_summary": executive_bullets,
         "markets": compact_langs,
@@ -173,7 +192,9 @@ def main():
     )
     parser.add_argument("--topic", required=True, help="Topic query string (e.g. 'Intermittent fasting', 'Астрономія')")
     parser.add_argument("--langs", default="en", help="Comma-separated language codes (e.g. 'pl,cs' or 'uk,pl,de')")
-    parser.add_argument("--years", type=int, default=2, help="Number of years to analyze (default: 2)")
+    parser.add_argument("--years", type=float, default=None, help="Number of years to analyze (e.g. 2, 4.5)")
+    parser.add_argument("--start-date", default=None, help="Explicit start date (YYYY-MM-DD, e.g. 2022-02-24)")
+    parser.add_argument("--end-date", default=None, help="Explicit end date (YYYY-MM-DD)")
     parser.add_argument("--output-dir", default="output", help="Directory where charts and PDFs are stored")
     parser.add_argument("--no-pdf", action="store_true", help="Skip PDF generation")
     parser.add_argument("--no-chart", action="store_true", help="Skip Chart generation")
@@ -186,6 +207,8 @@ def main():
         topic=args.topic,
         langs=langs,
         years=args.years,
+        start_date=args.start_date,
+        end_date=args.end_date,
         output_dir=args.output_dir,
         generate_pdf=not args.no_pdf,
         generate_chart=not args.no_chart
@@ -196,3 +219,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

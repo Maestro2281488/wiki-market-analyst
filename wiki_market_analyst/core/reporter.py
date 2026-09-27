@@ -58,7 +58,8 @@ def generate_pdf_report(
     topic: str,
     analyses: Dict[str, Dict[str, Any]],
     chart_path: str,
-    years: int = 2,
+    years: Optional[float] = None,
+    date_label: Optional[str] = None,
     output_pdf_path: str = "output/report.pdf"
 ) -> str:
     """
@@ -89,10 +90,12 @@ def generate_pdf_report(
     # Header metadata box (Right)
     pdf.set_xy(135, 12)
     pdf.set_font(font_name, "B", 7)
-    pdf.cell(58, 4, f"Window: {years} Years ({datetime.date.today().year - years}–{datetime.date.today().year})", align="R")
+    window_str = date_label if date_label else f"Window: {years or 2} Years"
+    pdf.cell(58, 4, window_str, align="R")
     pdf.set_xy(135, 16)
     pdf.set_font(font_name, "", 7)
     pdf.cell(58, 4, f"Generated: {datetime.date.today().strftime('%Y-%m-%d')}", align="R")
+
     pdf.set_xy(135, 20)
     pdf.cell(58, 4, f"Languages: {', '.join(l.upper() for l in analyses.keys())}", align="R")
 
